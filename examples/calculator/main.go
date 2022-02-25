@@ -1,0 +1,66 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"regexp"
+	"strconv"
+	"strings"
+
+	"github.com/mattmeyers/repl"
+)
+
+var matcher = regexp.MustCompile(`(-?\d+)\s*([\+\*\/\-x])\s*(-?\d+)`)
+
+func main() {
+	r := repl.Repl{
+		Input:  bufio.NewReader(os.Stdin),
+		Output: os.Stdout,
+
+		Handlers: []repl.Handler{
+			repl.HandlerFunc(func(s string) (string, error) {
+				if strings.TrimSpace(s) == "quit" {
+					return "", repl.ErrExit
+				}
+
+				return "", repl.ErrNoMatch
+			}),
+			repl.HandlerFunc(func(s string) (string, error) {
+				matches := matcher.FindAllStringSubmatch(s, -1)
+				if len(matches) != 1 {
+					return "That doesn't work.", nil
+				}
+
+				a, _ := strconv.Atoi(matches[0][1])
+				b, _ := strconv.Atoi(matches[0][3])
+
+				var res int
+				switch matches[0][2] {
+				case "+":
+					res = a + b
+				case "-":
+					res = a - b
+				case "*", "x":
+					res = a * b
+				case "/":
+					if b == 0 {
+						return "Cannot divide by zero", nil
+					}
+
+					res = a / b
+				}
+
+				return strconv.Itoa(res), nil
+			}),
+		},
+
+		PreRun:  func() (string, error) { return "Welcome!\n", nil },
+		PostRun: func() (string, error) { return "Farewell!\n", nil },
+		Prompt:  func() (string, error) { return ">> ", nil },
+	}
+
+	if err := r.Run(); err != nil {
+		fmt.Println(err.Error())
+	}
+}
