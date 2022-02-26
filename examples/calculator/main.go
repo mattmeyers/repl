@@ -29,7 +29,7 @@ func main() {
 			repl.HandlerFunc(func(s string) (string, error) {
 				matches := matcher.FindAllStringSubmatch(s, -1)
 				if len(matches) != 1 {
-					return "That doesn't work.", nil
+					return "", repl.NewError("That doesn't work.")
 				}
 
 				a, _ := strconv.Atoi(matches[0][1])
@@ -45,7 +45,7 @@ func main() {
 					res = a * b
 				case "/":
 					if b == 0 {
-						return "Cannot divide by zero", nil
+						return "", repl.NewError("Cannot divide by zero")
 					}
 
 					res = a / b

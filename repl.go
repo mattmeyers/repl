@@ -19,6 +19,19 @@ type Repl struct {
 	Prompt  Prompter
 }
 
+type Error struct {
+	Message string
+	Fatal   bool
+}
+
+func (e Error) Error() string {
+	return e.Message
+}
+
+func NewError(message string) Error { return Error{Message: message, Fatal: false} }
+
+func NewFatalError(message string) Error { return Error{Message: message, Fatal: true} }
+
 var (
 	ErrNoMatch = errors.New("no match")
 	ErrExit    = errors.New("exit")
@@ -86,10 +99,18 @@ func (r *Repl) runLoop() error {
 
 		for _, h := range r.Handlers {
 			output, err := h.Handle(input)
+
+			var replErr Error
 			if errors.Is(err, ErrNoMatch) {
 				continue
 			} else if errors.Is(err, ErrExit) {
 				return nil
+			} else if errors.As(err, &replErr) {
+				if replErr.Fatal {
+					return replErr
+				}
+
+				fmt.Fprintf(r.Output, "%v\n", replErr)
 			} else if err != nil {
 				return err
 			} else if output != "" {
