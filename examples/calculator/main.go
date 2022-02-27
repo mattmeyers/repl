@@ -19,14 +19,14 @@ func main() {
 		Output: os.Stdout,
 
 		Handlers: []repl.Handler{
-			repl.HandlerFunc(func(s string) (string, error) {
+			func(s string) (string, error) {
 				if strings.TrimSpace(s) == "quit" {
 					return "", repl.ErrExit
 				}
 
 				return "", repl.ErrNoMatch
-			}),
-			repl.HandlerFunc(func(s string) (string, error) {
+			},
+			func(s string) (string, error) {
 				matches := matcher.FindAllStringSubmatch(s, -1)
 				if len(matches) != 1 {
 					return "", repl.NewError("That doesn't work.")
@@ -52,7 +52,7 @@ func main() {
 				}
 
 				return strconv.Itoa(res), nil
-			}),
+			},
 		},
 
 		PreRun:   func() (string, error) { return "Welcome!\n", nil },

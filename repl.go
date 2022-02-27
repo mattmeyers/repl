@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+// Repl holds all of the REPL dependencies. Unless overwritten, the input will default
+// to stdin and the output will default to stdout.
 type Repl struct {
 	Input  *bufio.Reader
 	Output io.Writer
@@ -22,6 +24,25 @@ type Repl struct {
 	PostRun  Hook
 }
 
+// Handler represents a function that can handle a command. Handlers are expected to
+// ensure the command is appropriate for the handler function. If not, the Handler
+// must return ErrNoMatch. Any non-empty string returned from the function will be
+// printed.
+type Handler func(string) (string, error)
+
+// Hook is a function that can be run at certain execution points in the REPL lifecycle.
+// Any error returned from a hook function will be treated as a fatal error. Any
+// non-empty string returned will be printed.
+type Hook func() (string, error)
+
+// Prompter is a function that can be used to dynamically build the REPL prompt. Any
+// error returned will be treated as fatal.
+type Prompter func() (string, error)
+
+// Error represents a REPL error. Because a REPL command can result in a non fatal
+// error that keeps the REPL alive, a special error cosntruct must be used to
+// encode this information. REPL errors must always be used to keep the REPL running
+// after a failed command. All other errors will be treated as fatal errors.
 type Error struct {
 	Message string
 	Fatal   bool
@@ -31,27 +52,41 @@ func (e Error) Error() string {
 	return e.Message
 }
 
-func NewError(message string) Error { return Error{Message: message, Fatal: false} }
-
-func NewFatalError(message string) Error { return Error{Message: message, Fatal: true} }
-
-var (
-	ErrNoMatch = errors.New("no match")
-	ErrExit    = errors.New("exit")
-)
-
-type Handler interface {
-	Handle(string) (string, error)
+// NewError creates a new non fatal REPL error. When one of these errors is returned
+// from a Handler, the message will be displayed and the REPL will loop.
+func NewError(message string) Error {
+	return Error{Message: message, Fatal: false}
 }
 
-type HandlerFunc func(string) (string, error)
+// NewFatalError creates a new fatal REPL error. When one of these errors is returned
+// from a Handler, the message will be displayed and the REPL will exit.
+func NewFatalError(message string) Error {
+	return Error{Message: message, Fatal: true}
+}
 
-func (f HandlerFunc) Handle(s string) (string, error) { return f(s) }
+var (
+	// ErrNoMatch signals that an entered command does not match a handler. This error
+	// must be returned from any Handler that cannot handle the provided command.
+	ErrNoMatch = errors.New("no match")
+	// ErrExit signals that the REPL should cleanly exit.
+	ErrExit = errors.New("exit")
+)
 
-type Hook func() (string, error)
-
-type Prompter func() (string, error)
-
+// Run starts the REPL. The lifecycle of the REPL is as follows
+//
+//		1. Pre run hook
+//		2. Loop until exit
+//			a. Pre read hook
+//			b. Print prompt
+//			c. Handle input
+//			d. Post eval hook
+//		3. Post run hook
+//
+// During the execution of the REPL, errors may occur. Most errors will be non fatal.
+// These errors will result in their message being printed, and then the loop continuing.
+// If at some point a non recoverable error occurs, the error message will be printed
+// and the REPL will exit. The exit will occur immediately. Any hooks that have not yet
+// run will be skipped.
 func (r *Repl) Run() error {
 	var err error
 
@@ -105,8 +140,8 @@ func (r *Repl) runLoop() error {
 			return err
 		}
 
-		for _, h := range r.Handlers {
-			output, err := h.Handle(input)
+		for _, handler := range r.Handlers {
+			output, err := handler(input)
 
 			var replErr Error
 			if errors.Is(err, ErrNoMatch) {
