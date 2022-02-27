@@ -14,9 +14,12 @@ type Repl struct {
 
 	Handlers []Handler
 
-	PreRun  Hook
-	PostRun Hook
-	Prompt  Prompter
+	Prompt Prompter
+
+	PreRun   Hook
+	PreRead  Hook
+	PostEval Hook
+	PostRun  Hook
 }
 
 type Error struct {
@@ -87,7 +90,12 @@ func (r *Repl) runHook(hook Hook) error {
 
 func (r *Repl) runLoop() error {
 	for {
-		err := r.printPrompt()
+		err := r.runHook(r.PreRead)
+		if err != nil {
+			return err
+		}
+
+		err = r.printPrompt()
 		if err != nil {
 			return err
 		}
@@ -116,6 +124,13 @@ func (r *Repl) runLoop() error {
 			} else if output != "" {
 				fmt.Fprintf(r.Output, "%s\n", output)
 			}
+
+			break
+		}
+
+		err = r.runHook(r.PostEval)
+		if err != nil {
+			return err
 		}
 	}
 }

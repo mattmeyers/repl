@@ -55,9 +55,11 @@ func main() {
 			}),
 		},
 
-		PreRun:  func() (string, error) { return "Welcome!\n", nil },
-		PostRun: func() (string, error) { return "Farewell!\n", nil },
-		Prompt:  func() (string, error) { return ">> ", nil },
+		PreRun:   func() (string, error) { return "Welcome!\n", nil },
+		PreRead:  func() (string, error) { return "Reading...\n", nil },
+		PostEval: func() (string, error) { return "Evaluated! Looping...\n", nil },
+		PostRun:  func() (string, error) { return "Farewell!\n", nil },
+		Prompt:   func() (string, error) { return ">> ", nil },
 	}
 
 	if err := r.Run(); err != nil {
