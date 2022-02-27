@@ -19,15 +19,15 @@ func main() {
 		Output: os.Stdout,
 
 		Handlers: []repl.Handler{
-			func(s string) (string, error) {
-				if strings.TrimSpace(s) == "quit" {
+			func(ctx *repl.Context) (string, error) {
+				if strings.TrimSpace(ctx.Input) == "quit" {
 					return "", repl.ErrExit
 				}
 
 				return "", repl.ErrNoMatch
 			},
-			func(s string) (string, error) {
-				matches := matcher.FindAllStringSubmatch(s, -1)
+			func(ctx *repl.Context) (string, error) {
+				matches := matcher.FindAllStringSubmatch(ctx.Input, -1)
 				if len(matches) != 1 {
 					return "", repl.NewError("That doesn't work.")
 				}
@@ -55,11 +55,11 @@ func main() {
 			},
 		},
 
-		PreRun:   func() (string, error) { return "Welcome!\n", nil },
-		PreRead:  func() (string, error) { return "Reading...\n", nil },
-		PostEval: func() (string, error) { return "Evaluated! Looping...\n", nil },
-		PostRun:  func() (string, error) { return "Farewell!\n", nil },
-		Prompt:   func() (string, error) { return ">> ", nil },
+		PreRun:   func(ctx *repl.Context) (string, error) { return "Welcome!\n", nil },
+		PreRead:  func(ctx *repl.Context) (string, error) { return "Reading...\n", nil },
+		PostEval: func(ctx *repl.Context) (string, error) { return "Evaluated! Looping...\n", nil },
+		PostRun:  func(ctx *repl.Context) (string, error) { return "Farewell!\n", nil },
+		Prompt:   func(ctx *repl.Context) (string, error) { return ">> ", nil },
 	}
 
 	if err := r.Run(); err != nil {

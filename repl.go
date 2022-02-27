@@ -2,6 +2,7 @@ package repl
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -22,22 +23,36 @@ type Repl struct {
 	PreRead  Hook
 	PostEval Hook
 	PostRun  Hook
+
+	ctx *Context
+}
+
+// Context holds the current context of the REPL. This object can be used to access the
+// user's input.
+type Context struct {
+	ctx context.Context
+
+	Input string
+}
+
+func (c *Context) Context() context.Context {
+	return c.ctx
 }
 
 // Handler represents a function that can handle a command. Handlers are expected to
 // ensure the command is appropriate for the handler function. If not, the Handler
 // must return ErrNoMatch. Any non-empty string returned from the function will be
 // printed.
-type Handler func(string) (string, error)
+type Handler func(*Context) (string, error)
 
 // Hook is a function that can be run at certain execution points in the REPL lifecycle.
 // Any error returned from a hook function will be treated as a fatal error. Any
 // non-empty string returned will be printed.
-type Hook func() (string, error)
+type Hook func(*Context) (string, error)
 
 // Prompter is a function that can be used to dynamically build the REPL prompt. Any
 // error returned will be treated as fatal.
-type Prompter func() (string, error)
+type Prompter func(*Context) (string, error)
 
 // Error represents a REPL error. Because a REPL command can result in a non fatal
 // error that keeps the REPL alive, a special error cosntruct must be used to
@@ -90,6 +105,8 @@ var (
 func (r *Repl) Run() error {
 	var err error
 
+	r.ctx = &Context{ctx: context.Background()}
+
 	err = r.runHook(r.PreRun)
 	if err != nil {
 		return err
@@ -113,7 +130,7 @@ func (r *Repl) runHook(hook Hook) error {
 		return nil
 	}
 
-	s, err := hook()
+	s, err := hook(r.ctx)
 	if err != nil {
 		return err
 	} else if s != "" {
@@ -135,13 +152,13 @@ func (r *Repl) runLoop() error {
 			return err
 		}
 
-		input, err := r.readInput()
+		r.ctx.Input, err = r.readInput()
 		if err != nil {
 			return err
 		}
 
 		for _, handler := range r.Handlers {
-			output, err := handler(input)
+			output, err := handler(r.ctx)
 
 			var replErr Error
 			if errors.Is(err, ErrNoMatch) {
@@ -171,7 +188,7 @@ func (r *Repl) runLoop() error {
 }
 
 func (r *Repl) printPrompt() error {
-	p, err := r.Prompt()
+	p, err := r.Prompt(r.ctx)
 	if err != nil {
 		return err
 	}
