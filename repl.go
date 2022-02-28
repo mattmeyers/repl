@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 )
 
@@ -25,6 +26,57 @@ type Repl struct {
 	PostRun  Hook
 
 	ctx *Context
+}
+
+// New instantiates a new Repl that can be further built and run.
+func New() *Repl {
+	return &Repl{
+		Input:  bufio.NewReader(os.Stdin),
+		Output: os.Stdout,
+		ctx:    &Context{ctx: context.Background()},
+	}
+}
+
+// WithHandler appends another Handler to the Repl's handler chain.
+func (r *Repl) WithHandler(h Handler) *Repl {
+	r.Handlers = append(r.Handlers, h)
+	return r
+}
+
+// WithPrompt sets the function to use to generate the REPL prompt.
+func (r *Repl) WithPrompt(p Prompter) *Repl {
+	r.Prompt = p
+	return r
+}
+
+// WithPreRunHook sets the function to call when the pre run hook is run.
+func (r *Repl) WithPreRunHook(h Hook) *Repl {
+	r.PreRun = h
+	return r
+}
+
+// WithPreReadHook sets the function to call when the pre read hook is run.
+func (r *Repl) WithPreReadHook(h Hook) *Repl {
+	r.PreRead = h
+	return r
+}
+
+// WithPostEvalHook sets the function to call when the post eval hook is run.
+func (r *Repl) WithPostEvalHook(h Hook) *Repl {
+	r.PostEval = h
+	return r
+}
+
+// WithPostRunHook sets the function to call when the post run hook is run.
+func (r *Repl) WithPostRunHook(h Hook) *Repl {
+	r.PostRun = h
+	return r
+}
+
+// WithContext sets the context.Context within the Repl Context object.
+func (r *Repl) WithContext(ctx context.Context) *Repl {
+	r.ctx.ctx = ctx
+	return r
 }
 
 // Context holds the current context of the REPL. This object can be used to access the
