@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 )
 
@@ -139,6 +140,28 @@ func OneOfMatcher(strs ...string) Matcher {
 		}
 
 		return ErrNoMatch
+	}
+}
+
+// RegexMatcher matches the user input against the provided regex pattern. The regular
+// expression is lazily compiled when the matcher is called for the first time. If the
+// regular expression cannot be compiled, then a fatal error will be returned.
+func RegexMatcher(pattern string) Matcher {
+	var matcher *regexp.Regexp
+	return func(s string) error {
+		if matcher == nil {
+			var err error
+			matcher, err = regexp.Compile(pattern)
+			if err != nil {
+				return NewFatalError("invalid regular expression")
+			}
+		}
+
+		if !matcher.MatchString(s) {
+			return ErrNoMatch
+		}
+
+		return nil
 	}
 }
 
