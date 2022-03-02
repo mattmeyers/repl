@@ -4,15 +4,22 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/mattmeyers/repl"
 )
 
 func main() {
 	r := repl.New().
-		WithHandler(handleQuit).
-		WithHandler(handleCalculate).
+		WithCommand(repl.Command{
+			Name:   "quit",
+			Usage:  "Exit the REPL",
+			Match:  repl.OneOfMatcher("quit", "q"),
+			Handle: handleQuit,
+		}).
+		WithCommand(repl.Command{
+			Match:  repl.AlwaysMatcher(),
+			Handle: handleCalculate,
+		}).
 		WithPrompt(func(ctx *repl.Context) (string, error) { return ">> ", nil }).
 		WithPreRunHook(func(ctx *repl.Context) (string, error) { return "Welcome!\n", nil }).
 		WithPreReadHook(func(ctx *repl.Context) (string, error) { return "Reading...\n", nil }).
@@ -25,11 +32,7 @@ func main() {
 }
 
 func handleQuit(ctx *repl.Context) (string, error) {
-	if strings.TrimSpace(ctx.Input) == "quit" {
-		return "", repl.ErrExit
-	}
-
-	return "", repl.ErrNoMatch
+	return "", repl.ErrExit
 }
 
 var matcher = regexp.MustCompile(`(-?\d+)\s*([\+\*\/\-x])\s*(-?\d+)`)

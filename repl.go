@@ -16,7 +16,7 @@ type Repl struct {
 	Input  *bufio.Reader
 	Output io.Writer
 
-	Handlers []Handler
+	Commands []Command
 
 	Prompt Prompter
 
@@ -37,9 +37,9 @@ func New() *Repl {
 	}
 }
 
-// WithHandler appends another Handler to the Repl's handler chain.
-func (r *Repl) WithHandler(h Handler) *Repl {
-	r.Handlers = append(r.Handlers, h)
+// WithCommand appends another Command to the Repl's command chain.
+func (r *Repl) WithCommand(c Command) *Repl {
+	r.Commands = append(r.Commands, c)
 	return r
 }
 
@@ -87,14 +87,72 @@ type Context struct {
 	Input string
 }
 
+// Context returns the context.Context held within the Repl's Context.
 func (c *Context) Context() context.Context {
 	return c.ctx
 }
 
-// Handler represents a function that can handle a command. Handlers are expected to
-// ensure the command is appropriate for the handler function. If not, the Handler
-// must return ErrNoMatch. Any non-empty string returned from the function will be
-// printed.
+// Command represents a single REPL command. If the Matcher returns no error when passed
+// the user's input, then the Handler is run.
+type Command struct {
+	Name   string
+	Usage  string
+	Match  Matcher
+	Handle Handler
+}
+
+// Matcher is a function that takes the user's input and determines if the command's
+// Handler should be run. If the input does not match, then the function must return
+// ErrNoMatch.
+type Matcher func(string) error
+
+// StringMatcher checks if the user input perfectly matches the provided string.
+func StringMatcher(s string) Matcher {
+	return func(input string) error {
+		if s != input {
+			return ErrNoMatch
+		}
+
+		return nil
+	}
+}
+
+// StringPrefixMatcher checks of the provided string is the prefix to the user input.
+func StringPrefixMatcher(s string) Matcher {
+	return func(input string) error {
+		if !strings.HasPrefix(input, s) {
+			return ErrNoMatch
+		}
+
+		return nil
+	}
+}
+
+// OneOfMatcher matches if at least one of the provided strings perfectly matches the
+// user input.
+func OneOfMatcher(strs ...string) Matcher {
+	return func(s string) error {
+		for _, str := range strs {
+			if s == str {
+				return nil
+			}
+		}
+
+		return ErrNoMatch
+	}
+}
+
+// AlwaysMatcher matches all user input. This can be used for a catch-all command.
+func AlwaysMatcher() Matcher {
+	return func(s string) error { return nil }
+}
+
+// NeverMatcher never matches the user input.
+func NeverMatcher() Matcher {
+	return func(s string) error { return ErrNoMatch }
+}
+
+// Handler represents a function that can handle a command.
 type Handler func(*Context) (string, error)
 
 // Hook is a function that can be run at certain execution points in the REPL lifecycle.
@@ -120,20 +178,20 @@ func (e Error) Error() string {
 }
 
 // NewError creates a new non fatal REPL error. When one of these errors is returned
-// from a Handler, the message will be displayed and the REPL will loop.
+// from a Command, the message will be displayed and the REPL will loop.
 func NewError(message string) Error {
 	return Error{Message: message, Fatal: false}
 }
 
 // NewFatalError creates a new fatal REPL error. When one of these errors is returned
-// from a Handler, the message will be displayed and the REPL will exit.
+// from a Command, the message will be displayed and the REPL will exit.
 func NewFatalError(message string) Error {
 	return Error{Message: message, Fatal: true}
 }
 
 var (
 	// ErrNoMatch signals that an entered command does not match a handler. This error
-	// must be returned from any Handler that cannot handle the provided command.
+	// must be returned from any Command that cannot handle the provided command.
 	ErrNoMatch = errors.New("no match")
 	// ErrExit signals that the REPL should cleanly exit.
 	ErrExit = errors.New("exit")
@@ -209,13 +267,23 @@ func (r *Repl) runLoop() error {
 			return err
 		}
 
-		for _, handler := range r.Handlers {
-			output, err := handler(r.ctx)
-
+		for _, command := range r.Commands {
 			var replErr Error
+			err := command.Match(r.ctx.Input)
 			if errors.Is(err, ErrNoMatch) {
 				continue
-			} else if errors.Is(err, ErrExit) {
+			} else if errors.As(err, &replErr) {
+				if replErr.Fatal {
+					return replErr
+				}
+
+				fmt.Fprintf(r.Output, "%v\n", replErr)
+			} else if err != nil {
+				return err
+			}
+
+			output, err := command.Handle(r.ctx)
+			if errors.Is(err, ErrExit) {
 				return nil
 			} else if errors.As(err, &replErr) {
 				if replErr.Fatal {
