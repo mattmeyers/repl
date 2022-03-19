@@ -1,8 +1,9 @@
 package repl
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/mattmeyers/assert"
 )
 
 func Test_History_Append(t *testing.T) {
@@ -68,11 +69,9 @@ func Test_History_Append(t *testing.T) {
 				Head:   tt.fields.Head,
 				Cap:    tt.fields.Cap,
 			}
-			h.Append(tt.args.s)
 
-			if !reflect.DeepEqual(h, tt.want) {
-				t.Errorf("Incorrect History post Append")
-			}
+			h.Append(tt.args.s)
+			assert.DeepEqual(t, h, tt.want)
 		})
 	}
 }
@@ -140,9 +139,9 @@ func Test_History_Get(t *testing.T) {
 				Head:   tt.fields.Head,
 				Cap:    tt.fields.Cap,
 			}
-			if got := h.Get(tt.args.offset); got != tt.want {
-				t.Errorf("History.Get() = %v, want %v", got, tt.want)
-			}
+
+			got := h.Get(tt.args.offset)
+			assert.Equal(t, got, tt.want)
 		})
 	}
 }
