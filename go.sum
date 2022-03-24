@@ -2,3 +2,5 @@ github.com/mattmeyers/assert v0.0.0-20220319024325-be373c2c0827 h1:zDQHcdHPHorbE
 github.com/mattmeyers/assert v0.0.0-20220319024325-be373c2c0827/go.mod h1:AFf6HKG/puFuxNGCyylsTFDhzB3CfbqMyNEdEoBoo14=
 github.com/mattmeyers/assert v0.0.0-20220319151446-769908fe8fa9 h1:rVRLDdV36bNzSU0uq5mMJb8N2/XKhoI1ft55k9PN0j4=
 github.com/mattmeyers/assert v0.0.0-20220319151446-769908fe8fa9/go.mod h1:AFf6HKG/puFuxNGCyylsTFDhzB3CfbqMyNEdEoBoo14=
+github.com/mattmeyers/assert v0.1.0 h1:8C6PnOHBNC3H0hM4axnJPxAQQVUTgeW3G2wIVc/b7xY=
+github.com/mattmeyers/assert v0.1.0/go.mod h1:AFf6HKG/puFuxNGCyylsTFDhzB3CfbqMyNEdEoBoo14=
